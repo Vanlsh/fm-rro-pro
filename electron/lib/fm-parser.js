@@ -1,12 +1,16 @@
 import fs from "fs";
 import iconv from "iconv-lite";
 
-const HEADER_SIZE = 0xA00;
+const HEADER_SIZE = 0xa00;
 const Z_REPORT_SIZE = 162;
 const SERIAL_RECORD_SIZE = 32;
 const FM_NUMBER_RECORD_SIZE = 32;
+const FM_NUMBER_COUNT = 8;
+const FM_NUMBERS_BLOCK_SIZE = 0x100; // total space reserved for FM numbers + filler
 const VAT_RATE_RECORD_SIZE = 20;
 const TAX_ID_RECORD_SIZE = 24;
+const TAX_ID_RECORD_COUNT = 10;
+const TAX_ID_BLOCK_SIZE = 0x100; // keep overall block size consistent with original layout
 
 const DATE_EMPTY = 0xffff;
 
@@ -21,7 +25,9 @@ const decodeDosDateTime = (time, date) => {
   const seconds = (time & 0x1f) * 2;
   return {
     raw: { time, date },
-    iso: new Date(Date.UTC(year, month - 1, day, hours, minutes, seconds)).toISOString(),
+    iso: new Date(
+      Date.UTC(year, month - 1, day, hours, minutes, seconds)
+    ).toISOString(),
   };
 };
 
@@ -46,11 +52,12 @@ const readString = (buffer, offset, length) => {
   return iconv.decode(raw, "windows-1251").replace(/\0+$/, "");
 };
 
-const writeString = (buffer, offset, length, value) => {
+const writeString = (buffer, offset, length, value, useFullLength = false) => {
   buffer.fill(0, offset, offset + length);
   if (!value) return;
   const encoded = iconv.encode(value, "windows-1251");
-  const sliceLength = Math.min(encoded.length, length - 1);
+  const maxLen = useFullLength ? length : length - 1;
+  const sliceLength = Math.min(encoded.length, maxLen);
   encoded.copy(buffer, offset, 0, sliceLength);
 };
 
@@ -63,7 +70,16 @@ const checksumFromSlice = (buffer, start, length) => {
   return sum;
 };
 
+const isRecordEmpty = (buffer, start, length) => {
+  const end = start + length - 1; // ignore checksum position
+  for (let i = start; i < end; i++) {
+    if (buffer[i] !== 0xff) return false;
+  }
+  return true;
+};
+
 const applyChecksum = (buffer, start, length) => {
+  if (isRecordEmpty(buffer, start, length)) return; // skip checksum for empty records
   buffer[start + length - 1] = checksumFromSlice(buffer, start, length);
 };
 
@@ -101,7 +117,8 @@ const parseSerialRecord = (buffer, offset) => {
   return { dateTime, countryNumber, serialNumber };
 };
 
-const writeSerialRecord = (buffer, offset, value = {}) => {
+const writeSerialRecord = (buffer, offset, value) => {
+  if (!value) return;
   writeDateTime(buffer, offset, value.dateTime?.iso);
   buffer.writeUInt8(value.countryNumber ?? 0, offset + 4);
   writeString(buffer, offset + 5, 26, value.serialNumber);
@@ -114,7 +131,8 @@ const parseFMNumberRecord = (buffer, offset) => {
   return { dateTime, fmNumber };
 };
 
-const writeFMNumberRecord = (buffer, offset, value = {}) => {
+const writeFMNumberRecord = (buffer, offset, value) => {
+  if (!value) return;
   writeDateTime(buffer, offset, value.dateTime?.iso);
   writeString(buffer, offset + 4, 27, value.fmNumber);
   applyChecksum(buffer, offset, FM_NUMBER_RECORD_SIZE);
@@ -145,7 +163,8 @@ const parseVatRateChange = (buffer, offset) => {
   };
 };
 
-const writeVatRateChange = (buffer, offset, value = {}) => {
+const writeVatRateChange = (buffer, offset, value) => {
+  if (!value) return;
   writeDateTime(buffer, offset, value.dateTime?.iso);
   buffer.writeUInt16LE(value.VatA ?? 0, offset + 4);
   buffer.writeUInt16LE(value.VatB ?? 0, offset + 6);
@@ -167,7 +186,8 @@ const parseTaxIdRecord = (buffer, offset) => {
   return { dateTime, type, lastZReport, taxNumber };
 };
 
-const writeTaxIdRecord = (buffer, offset, value = {}) => {
+const writeTaxIdRecord = (buffer, offset, value) => {
+  if (!value) return;
   writeDateTime(buffer, offset, value.dateTime?.iso);
   buffer.writeUInt8(value.type ?? 0, offset + 4);
   buffer.writeUInt16LE(value.lastZReport ?? 0, offset + 5);
@@ -176,8 +196,8 @@ const writeTaxIdRecord = (buffer, offset, value = {}) => {
 };
 
 const parseTestRecord = (buffer, offset) => parseDateTime(buffer, offset);
-const writeTestRecord = (buffer, offset, value = {}) =>
-  writeDateTime(buffer, offset, value?.iso);
+const writeTestRecord = (buffer, offset, value) =>
+  value ? writeDateTime(buffer, offset, value?.iso) : null;
 
 const zReportFieldOrder = [
   { key: "ZNumber", type: "u16" },
@@ -320,40 +340,56 @@ export const parseFiscalMemory = (buffer) => {
   offset += 0x80; // fill3
 
   const fmNumbers = [];
-  for (let i = 0; i < 4; i++) {
-    fmNumbers.push(parseFMNumberRecord(buffer, offset));
-    offset += 32;
+  for (let i = 0; i < FM_NUMBER_COUNT; i++) {
+    if (!isRecordEmpty(buffer, offset, FM_NUMBER_RECORD_SIZE)) {
+      fmNumbers.push(parseFMNumberRecord(buffer, offset));
+    }
+    offset += FM_NUMBER_RECORD_SIZE;
   }
 
-  offset += 0x80; // fill4
+  const fmFillSize = Math.max(
+    0,
+    FM_NUMBERS_BLOCK_SIZE - FM_NUMBER_COUNT * FM_NUMBER_RECORD_SIZE
+  );
+  offset += fmFillSize; // fill4 adjusted to keep block size consistent
 
   const vatRates = [];
   for (let i = 0; i < 16; i++) {
-    vatRates.push(parseVatRateChange(buffer, offset));
+    if (!isRecordEmpty(buffer, offset, VAT_RATE_RECORD_SIZE)) {
+      vatRates.push(parseVatRateChange(buffer, offset));
+    }
     offset += 20;
   }
 
-  offset += 0xC0; // fill5
+  offset += 0xc0; // fill5
 
   const ramResets = [];
   for (let i = 0; i < 100; i++) {
-    ramResets.push(parseDateTime(buffer, offset));
+    const dt = parseDateTime(buffer, offset);
+    if (dt) ramResets.push(dt);
     offset += 4;
   }
 
   offset += 0x270; // fill6
 
   const taxRecords = [];
-  for (let i = 0; i < 6; i++) {
-    taxRecords.push(parseTaxIdRecord(buffer, offset));
-    offset += 24;
+  for (let i = 0; i < TAX_ID_RECORD_COUNT; i++) {
+    if (!isRecordEmpty(buffer, offset, TAX_ID_RECORD_SIZE)) {
+      taxRecords.push(parseTaxIdRecord(buffer, offset));
+    }
+    offset += TAX_ID_RECORD_SIZE;
   }
 
-  offset += 0x70; // fill7
+  const taxFillSize = Math.max(
+    0,
+    TAX_ID_BLOCK_SIZE - TAX_ID_RECORD_COUNT * TAX_ID_RECORD_SIZE
+  );
+  offset += taxFillSize; // fill7 adjusted to keep block size consistent
 
   const testRecords = [];
   for (let i = 0; i < 32; i++) {
-    testRecords.push(parseTestRecord(buffer, offset));
+    const dt = parseTestRecord(buffer, offset);
+    if (dt) testRecords.push(dt);
     offset += 4;
   }
 
@@ -364,7 +400,9 @@ export const parseFiscalMemory = (buffer) => {
 
   const zReports = [];
   for (let i = 0; i < zClosures; i++) {
-    zReports.push(parseZReport(buffer, offset));
+    if (!isRecordEmpty(buffer, offset, Z_REPORT_SIZE)) {
+      zReports.push(parseZReport(buffer, offset));
+    }
     offset += Z_REPORT_SIZE;
   }
 
@@ -386,13 +424,13 @@ export const parseFiscalMemory = (buffer) => {
 
 export const buildFiscalMemory = (data) => {
   const zReportCount = data?.zReports?.length ?? 0;
-  const buffer = Buffer.alloc(HEADER_SIZE + zReportCount * Z_REPORT_SIZE, 0);
+  const buffer = Buffer.alloc(HEADER_SIZE + zReportCount * Z_REPORT_SIZE, 0xff);
 
   let offset = 0;
   buffer.writeUInt8(data?.meta?.flag ?? 0, offset);
   offset += 1;
 
-  writeString(buffer, offset, 15, data?.meta?.idString ?? "");
+  writeString(buffer, offset, 15, data?.meta?.idString ?? "", true);
   offset += 15;
 
   offset += 0x10; // fill
@@ -410,19 +448,23 @@ export const buildFiscalMemory = (data) => {
 
   offset += 0x80; // fill3
 
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < FM_NUMBER_COUNT; i++) {
     writeFMNumberRecord(buffer, offset, data?.fmNumbers?.[i]);
-    offset += 32;
+    offset += FM_NUMBER_RECORD_SIZE;
   }
 
-  offset += 0x80; // fill4
+  const fmFillSize = Math.max(
+    0,
+    FM_NUMBERS_BLOCK_SIZE - FM_NUMBER_COUNT * FM_NUMBER_RECORD_SIZE
+  );
+  offset += fmFillSize; // fill4 adjusted to keep block size consistent
 
   for (let i = 0; i < 16; i++) {
     writeVatRateChange(buffer, offset, data?.vatRates?.[i]);
     offset += 20;
   }
 
-  offset += 0xC0; // fill5
+  offset += 0xc0; // fill5
 
   for (let i = 0; i < 100; i++) {
     writeTestRecord(buffer, offset, data?.ramResets?.[i]);
@@ -431,12 +473,16 @@ export const buildFiscalMemory = (data) => {
 
   offset += 0x270; // fill6
 
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < TAX_ID_RECORD_COUNT; i++) {
     writeTaxIdRecord(buffer, offset, data?.taxRecords?.[i]);
-    offset += 24;
+    offset += TAX_ID_RECORD_SIZE;
   }
 
-  offset += 0x70; // fill7
+  const taxFillSize = Math.max(
+    0,
+    TAX_ID_BLOCK_SIZE - TAX_ID_RECORD_COUNT * TAX_ID_RECORD_SIZE
+  );
+  offset += taxFillSize; // fill7 adjusted to keep block size consistent
 
   for (let i = 0; i < 32; i++) {
     writeTestRecord(buffer, offset, data?.testRecords?.[i]);

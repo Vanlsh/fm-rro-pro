@@ -1,27 +1,29 @@
-import type {
-  SuccessResponse,
-  ErrorResponse,
-  CheckParams,
-  CheckResponse,
-} from "./lib/types";
+import type { SuccessResponse, ErrorResponse } from "./lib/types";
+import type { FiscalMemoryDump } from "./lib/fm-types";
 
 export {};
-
-type FiscalMemoryDump = {
-  meta: { flag: number; idString: string; ksefNumbers: number[] };
-  serialRecord: unknown;
-  fmNumbers: unknown[];
-  vatRates: unknown[];
-  ramResets: unknown[];
-  taxRecords: unknown[];
-  testRecords: unknown[];
-  zReports: unknown[];
-};
 
 declare global {
   interface Window {
     api: {
       ping: () => Promise<string>;
+      openFiscalMemory: () => Promise<
+        | {
+            filePath: string;
+            data: FiscalMemoryDump;
+          }
+        | null
+      >;
+      parseFiscalMemory: (
+        buffer: ArrayBuffer | Buffer
+      ) => Promise<FiscalMemoryDump>;
+      saveFiscalMemoryAs: (
+        data: FiscalMemoryDump
+      ) => Promise<{ filePath: string; success: true } | null>;
+      saveFiscalMemoryToPath: (
+        filePath: string,
+        data: FiscalMemoryDump
+      ) => Promise<{ filePath: string; success: true }>;
       checkForUpdates: () => Promise<
         | { status: "up-to-date" }
         | { status: "downloaded"; version: string }
@@ -41,23 +43,6 @@ declare global {
           total: number;
         }) => void
       ) => void;
-      openFiscalMemory: () => Promise<
-        | {
-            filePath: string;
-            data: FiscalMemoryDump;
-          }
-        | null
-      >;
-      parseFiscalMemory: (
-        buffer: ArrayBuffer | Buffer
-      ) => Promise<FiscalMemoryDump>;
-      saveFiscalMemoryAs: (
-        data: FiscalMemoryDump
-      ) => Promise<{ filePath: string; success: true } | null>;
-      saveFiscalMemoryToPath: (
-        filePath: string,
-        data: FiscalMemoryDump
-      ) => Promise<{ filePath: string; success: true }>;
     };
   }
 }

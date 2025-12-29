@@ -110,6 +110,26 @@ const writeDateTime = (buffer, offset, isoString) => {
   buffer.writeUInt16LE(date, offset + 2);
 };
 
+const createDateResolver = (records, getDate) => {
+  const lastIndex = records.length ? records.length - 1 : 0xff;
+  const dated = records
+    .map((rec, index) => {
+      const iso = getDate(rec);
+      const time = iso ? Date.parse(iso) : null;
+      return { index, time };
+    })
+    .filter((item) => item.time !== null);
+
+  return (zIso) => {
+    if (!records.length) return 0xff;
+    const zTime = zIso ? Date.parse(zIso) : NaN;
+    if (Number.isNaN(zTime)) return lastIndex;
+    const eligible = dated.filter((d) => d.time !== null && d.time <= zTime);
+    if (!eligible.length) return lastIndex;
+    return eligible[eligible.length - 1].index;
+  };
+};
+
 const parseSerialRecord = (buffer, offset) => {
   const dateTime = parseDateTime(buffer, offset);
   const countryNumber = buffer.readUInt8(offset + 4);
@@ -256,7 +276,15 @@ const parseZReport = (buffer, offset) => {
         cursor += 4;
         break;
       case "u8":
-        if (field.key !== "CheckSum") {
+        if (
+          field.key !== "CheckSum" &&
+          ![
+            "FMNumChanges",
+            "LastFiscalizationNum",
+            "TaxNumChanges",
+            "RamResetsCount",
+          ].includes(field.key)
+        ) {
           result[field.key] = buffer.readUInt8(cursor);
         }
         cursor += 1;
@@ -426,6 +454,23 @@ export const buildFiscalMemory = (data) => {
   const zReportCount = data?.zReports?.length ?? 0;
   const buffer = Buffer.alloc(HEADER_SIZE + zReportCount * Z_REPORT_SIZE, 0xff);
 
+  const fmResolver = createDateResolver(
+    data?.fmNumbers ?? [],
+    (rec) => rec?.dateTime?.iso
+  );
+  const vatResolver = createDateResolver(
+    data?.vatRates ?? [],
+    (rec) => rec?.dateTime?.iso
+  );
+  const taxResolver = createDateResolver(
+    data?.taxRecords ?? [],
+    (rec) => rec?.dateTime?.iso
+  );
+  const resetResolver = createDateResolver(
+    data?.ramResets ?? [],
+    (rec) => rec?.iso
+  );
+
   let offset = 0;
   buffer.writeUInt8(data?.meta?.flag ?? 0, offset);
   offset += 1;
@@ -492,7 +537,15 @@ export const buildFiscalMemory = (data) => {
   offset += 0x80; // fill8
 
   for (let i = 0; i < zReportCount; i++) {
-    writeZReport(buffer, offset, data?.zReports?.[i]);
+    const zData = data?.zReports?.[i] ?? {};
+    const zDateIso = zData?.DateTime?.iso;
+    const computedValues = {
+      TaxNumChanges: vatResolver(zDateIso),
+      RamResetsCount: resetResolver(zDateIso),
+      LastFiscalizationNum: taxResolver(zDateIso),
+      FMNumChanges: fmResolver(zDateIso),
+    };
+    writeZReport(buffer, offset, { ...zData, ...computedValues });
     offset += Z_REPORT_SIZE;
   }
 

@@ -1,4 +1,5 @@
 import fs from "fs";
+import iconv from "iconv-lite";
 
 const HEADER_SIZE = 0xA00;
 const Z_REPORT_SIZE = 162;
@@ -41,16 +42,16 @@ const encodeDosDateTime = (isoString) => {
 };
 
 const readString = (buffer, offset, length) => {
-  return buffer
-    .subarray(offset, offset + length)
-    .toString("ascii")
-    .replace(/\0+$/, "");
+  const raw = buffer.subarray(offset, offset + length);
+  return iconv.decode(raw, "windows-1251").replace(/\0+$/, "");
 };
 
 const writeString = (buffer, offset, length, value) => {
   buffer.fill(0, offset, offset + length);
   if (!value) return;
-  buffer.write(value.slice(0, length - 1), offset, "ascii");
+  const encoded = iconv.encode(value, "windows-1251");
+  const sliceLength = Math.min(encoded.length, length - 1);
+  encoded.copy(buffer, offset, 0, sliceLength);
 };
 
 const checksumFromSlice = (buffer, start, length) => {

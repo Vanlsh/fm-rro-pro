@@ -1,80 +1,27 @@
 import type {
-  ArticleSaveResponse,
-  Product,
   SuccessResponse,
   ErrorResponse,
-  GroupSaveResponse,
-  TaxSaveResponse,
   CheckParams,
   CheckResponse,
-  ProductResponse,
 } from "./lib/types";
 
 export {};
 
+type FiscalMemoryDump = {
+  meta: { flag: number; idString: string; ksefNumbers: number[] };
+  serialRecord: unknown;
+  fmNumbers: unknown[];
+  vatRates: unknown[];
+  ramResets: unknown[];
+  taxRecords: unknown[];
+  testRecords: unknown[];
+  zReports: unknown[];
+};
+
 declare global {
   interface Window {
     api: {
-      ping: () => void;
-      setArticles: (
-        ip: string,
-        data: Product[]
-      ) => Promise<SuccessResponse<ArticleSaveResponse> | ErrorResponse>;
-      getArticles: (
-        ip: string
-      ) => Promise<SuccessResponse<ProductResponse> | ErrorResponse>;
-      setGroups: (
-        ip: string,
-        data: T[]
-      ) => Promise<SuccessResponse<GroupSaveResponse> | ErrorResponse>;
-      setTaxes: (
-        ip: string,
-        data: T[]
-      ) => Promise<SuccessResponse<TaxSaveResponse> | ErrorResponse>;
-      deleteArticles: (
-        ip: string
-      ) => Promise<
-        SuccessResponse<{ success: boolean; message: string }> | ErrorResponse
-      >;
-      deleteGroups: (
-        ip: string
-      ) => Promise<
-        SuccessResponse<{ success: boolean; message: string }> | ErrorResponse
-      >;
-      saveValidationErrors: (
-        errors: unknown
-      ) => Promise<SuccessResponse<string> | ErrorResponse>;
-      selectExcelFile: () => Promise<string | null>;
-      parseExcel: (
-        path: string
-      ) => Promise<
-        SuccessResponse<Record<ProductFieldLabel, unknown>[]> | ErrorResponse
-      >;
-      getChecks: (
-        ip: string,
-        params: CheckParams
-      ) => Promise<SuccessResponse<CheckResponse> | ErrorResponse>;
-      deleteSales: (ip: string) => Promise<unknown>;
-      generateExampleProducts: () => Promise<{
-        success: boolean;
-        message: string;
-      }>;
-      generateExampleTaxes: () => Promise<{
-        success: boolean;
-        message: string;
-      }>;
-      generateExampleGroups: () => Promise<{
-        success: boolean;
-        message: string;
-      }>;
-      downloadExcel: (
-        data: Record<string, unknown>[],
-        label: string,
-        name: string
-      ) => Promise<{
-        success: boolean;
-        message: string;
-      }>;
+      ping: () => Promise<string>;
       checkForUpdates: () => Promise<
         | { status: "up-to-date" }
         | { status: "downloaded"; version: string }
@@ -94,16 +41,23 @@ declare global {
           total: number;
         }) => void
       ) => void;
-      windowControl: (
-        action: "minimize" | "maximize" | "unmaximize" | "close"
-      ) => Promise<{ isMaximized: boolean } | void>;
-      confirmDialog: (options: {
-        message: string;
-        detail?: string;
-        title?: string;
-        yesLabel?: string;
-        noLabel?: string;
-      }) => Promise<boolean>;
+      openFiscalMemory: () => Promise<
+        | {
+            filePath: string;
+            data: FiscalMemoryDump;
+          }
+        | null
+      >;
+      parseFiscalMemory: (
+        buffer: ArrayBuffer | Buffer
+      ) => Promise<FiscalMemoryDump>;
+      saveFiscalMemoryAs: (
+        data: FiscalMemoryDump
+      ) => Promise<{ filePath: string; success: true } | null>;
+      saveFiscalMemoryToPath: (
+        filePath: string,
+        data: FiscalMemoryDump
+      ) => Promise<{ filePath: string; success: true }>;
     };
   }
 }

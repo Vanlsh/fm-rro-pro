@@ -1,7 +1,14 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import updaterPkg from "electron-updater";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
+import {
+  buildFiscalMemory,
+  loadFiscalMemoryFile,
+  parseFiscalMemory,
+  saveFiscalMemoryFile,
+} from "./lib/fm-parser.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const { autoUpdater } = updaterPkg;
@@ -97,6 +104,39 @@ app.whenReady().then(() => {
         message: error?.message || "Failed to start update installation.",
       };
     }
+  });
+
+  ipcMain.handle("fm-open-dialog", async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: "Open Fiscal Memory dump",
+      properties: ["openFile"],
+      filters: [{ name: "Binary", extensions: ["bin", "*"] }],
+    });
+    if (canceled || filePaths.length === 0) return null;
+    const filePath = filePaths[0];
+    const data = await loadFiscalMemoryFile(filePath);
+    return { filePath, data };
+  });
+
+  ipcMain.handle("fm-parse-buffer", async (_event, buffer) => {
+    return parseFiscalMemory(Buffer.from(buffer));
+  });
+
+  ipcMain.handle("fm-save-dialog", async (_event, data) => {
+    const { canceled, filePath } = await dialog.showSaveDialog({
+      title: "Save Fiscal Memory dump",
+      defaultPath: "fiscal-memory.bin",
+      filters: [{ name: "Binary", extensions: ["bin"] }],
+    });
+    if (canceled || !filePath) return null;
+    await saveFiscalMemoryFile(filePath, data);
+    return { filePath, success: true };
+  });
+
+  ipcMain.handle("fm-save-to-path", async (_event, filePath, data) => {
+    await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+    await saveFiscalMemoryFile(filePath, data);
+    return { filePath, success: true };
   });
 });
 

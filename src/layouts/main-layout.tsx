@@ -51,6 +51,7 @@ const getSectionLabel = (path: string) =>
 export function AppSidebar() {
   const { pathname } = useLocation();
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { path, data, setData, setPath, setMessage } = useFiscalStore();
 
   const fileName = path ? (path.split(/[/\\]/).pop() ?? path) : null;
@@ -86,6 +87,32 @@ export function AppSidebar() {
     }
   };
 
+  const handleSave = async () => {
+    if (!data) {
+      setMessage("Немає даних для збереження.");
+      return;
+    }
+    setIsSaving(true);
+    setMessage(null);
+    try {
+      const result = await window.api.saveFiscalMemoryAs(data);
+      if (!result) {
+        setMessage("Збереження скасовано.");
+        return;
+      }
+      setPath(result.filePath);
+      setMessage(`Збережено: ${result.filePath}`);
+    } catch (error: unknown) {
+      const reason =
+        error instanceof Error
+          ? error.message
+          : "Невідома помилка збереження.";
+      setMessage(`Не вдалося зберегти файл: ${reason}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <Sidebar side="left" variant="inset">
       <SidebarHeader className="px-3 py-4">
@@ -113,6 +140,19 @@ export function AppSidebar() {
           >
             {isLoading ? "Завантаження..." : buttonLabel}
           </Button>
+          {data && (
+            <div className="mt-2">
+              <Button
+                type="button"
+                onClick={handleSave}
+                disabled={isSaving}
+                variant="outline"
+                className="w-full justify-center"
+              >
+                {isSaving ? "Збереження..." : "Завантажити файл"}
+              </Button>
+            </div>
+          )}
         </div>
         <Collapsible defaultOpen className="group/collapsible px-3 py-2">
           <SidebarGroup className="rounded-xl border border-border bg-card p-2 shadow-sm">

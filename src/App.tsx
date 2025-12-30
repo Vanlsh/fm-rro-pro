@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { MainLayout } from "./layouts/main-layout";
+import { Toaster } from "@/components/ui/sonner";
 import { LoadPage } from "./pages/load-page";
 import { MetaPage } from "./pages/meta-page";
 import { SerialPage } from "./pages/serial-page";
@@ -9,7 +10,6 @@ import { RamResetsPage } from "./pages/ram-resets-page";
 import { TaxRecordsPage } from "./pages/tax-records-page";
 import { TestRecordsPage } from "./pages/test-records-page";
 import { ZReportsPage } from "./pages/z-reports-page";
-import { SidebarProvider } from "./components/ui/sidebar";
 
 function App() {
   return (
@@ -29,6 +29,7 @@ function App() {
           <Route path="*" element={<Navigate to="/load" replace />} />
         </Route>
       </Routes>
+      <Toaster position="top-right" />
     </HashRouter>
   );
 }

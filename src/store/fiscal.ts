@@ -6,6 +6,7 @@ import type {
   SerialRecord,
   VatRateChange,
   TaxIdRecord,
+  ZReport,
 } from "@/lib/fm-types";
 
 type FiscalState = {
@@ -22,6 +23,7 @@ type FiscalState = {
   clearTestRecords: () => void;
   setPath: (path: string | null) => void;
   setMessage: (message: string | null) => void;
+  setZReports: (updater: (reports: ZReport[]) => ZReport[]) => void;
 };
 
 export const useFiscalStore = create<FiscalState>((set) => ({
@@ -65,5 +67,11 @@ export const useFiscalStore = create<FiscalState>((set) => ({
     set((state) => {
       if (!state.data) return state;
       return { ...state, data: { ...state.data, testRecords: [] } };
+    }),
+  setZReports: (updater) =>
+    set((state) => {
+      if (!state.data) return state;
+      const next = updater(state.data.zReports ?? []);
+      return { ...state, data: { ...state.data, zReports: next } };
     }),
 }));

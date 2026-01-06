@@ -104,9 +104,7 @@ export function AppSidebar() {
       setMessage(`Збережено: ${result.filePath}`);
     } catch (error: unknown) {
       const reason =
-        error instanceof Error
-          ? error.message
-          : "Невідома помилка збереження.";
+        error instanceof Error ? error.message : "Невідома помилка збереження.";
       setMessage(`Не вдалося зберегти файл: ${reason}`);
     } finally {
       setIsSaving(false);
@@ -149,7 +147,7 @@ export function AppSidebar() {
                 variant="outline"
                 className="w-full justify-center"
               >
-                {isSaving ? "Збереження..." : "Завантажити файл"}
+                {isSaving ? "Збереження..." : "Зберегти файл"}
               </Button>
             </div>
           )}

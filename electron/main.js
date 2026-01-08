@@ -122,10 +122,10 @@ app.whenReady().then(() => {
     return parseFiscalMemory(Buffer.from(buffer));
   });
 
-  ipcMain.handle("fm-save-dialog", async (_event, data) => {
+  ipcMain.handle("fm-save-dialog", async (_event, data, defaultPath) => {
     const { canceled, filePath } = await dialog.showSaveDialog({
       title: "Save Fiscal Memory dump",
-      defaultPath: "fiscal-memory.bin",
+      defaultPath: defaultPath || "fiscal-memory.bin",
       filters: [{ name: "Binary", extensions: ["bin"] }],
     });
     if (canceled || !filePath) return null;

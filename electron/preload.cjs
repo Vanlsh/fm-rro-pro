@@ -10,7 +10,8 @@ contextBridge.exposeInMainWorld("api", {
     ),
   openFiscalMemory: () => ipcRenderer.invoke("fm-open-dialog"),
   parseFiscalMemory: (buffer) => ipcRenderer.invoke("fm-parse-buffer", buffer),
-  saveFiscalMemoryAs: (data) => ipcRenderer.invoke("fm-save-dialog", data),
+  saveFiscalMemoryAs: (data, defaultPath) =>
+    ipcRenderer.invoke("fm-save-dialog", data, defaultPath),
   saveFiscalMemoryToPath: (filePath, data) =>
     ipcRenderer.invoke("fm-save-to-path", filePath, data),
 });

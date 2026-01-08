@@ -68,6 +68,19 @@ export function AppSidebar() {
   const fileName = path ? (path.split(/[/\\]/).pop() ?? path) : null;
   const buttonLabel = path ? "Змінити файл" : "Завантажити файл";
 
+  const getUpdatedSaveName = (currentPath: string | null) => {
+    if (!currentPath) return "fiscal-memory_updated.bin";
+    const lastSlash = Math.max(currentPath.lastIndexOf("/"), currentPath.lastIndexOf("\\"));
+    const name = lastSlash >= 0 ? currentPath.slice(lastSlash + 1) : currentPath;
+    const dot = name.lastIndexOf(".");
+    if (dot > 0) {
+      const base = name.slice(0, dot);
+      const ext = name.slice(dot);
+      return `${base}_updated${ext}`;
+    }
+    return `${name}_updated`;
+  };
+
   const handleLoadFromSidebar = async () => {
     if (
       data &&
@@ -106,7 +119,10 @@ export function AppSidebar() {
     setIsSaving(true);
     setMessage(null);
     try {
-      const result = await window.api.saveFiscalMemoryAs(data);
+      const result = await window.api.saveFiscalMemoryAs(
+        data,
+        getUpdatedSaveName(path)
+      );
       if (!result) {
         setMessage("Збереження скасовано.");
         return;

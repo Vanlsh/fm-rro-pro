@@ -18,7 +18,8 @@ declare global {
         buffer: ArrayBuffer | Buffer
       ) => Promise<FiscalMemoryDump>;
       saveFiscalMemoryAs: (
-        data: FiscalMemoryDump
+        data: FiscalMemoryDump,
+        defaultPath?: string
       ) => Promise<{ filePath: string; success: true } | null>;
       saveFiscalMemoryToPath: (
         filePath: string,

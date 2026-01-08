@@ -3,6 +3,7 @@ import iconv from "iconv-lite";
 
 const HEADER_SIZE = 0xa00;
 const Z_REPORT_SIZE = 162;
+const Z_REPORT_SENTINEL_COUNT = 1; // always leave one empty record at the end
 const SERIAL_RECORD_SIZE = 32;
 const FM_NUMBER_RECORD_SIZE = 32;
 const FM_NUMBER_COUNT = 8;
@@ -452,7 +453,10 @@ export const parseFiscalMemory = (buffer) => {
 
 export const buildFiscalMemory = (data) => {
   const zReportCount = data?.zReports?.length ?? 0;
-  const buffer = Buffer.alloc(HEADER_SIZE + zReportCount * Z_REPORT_SIZE, 0xff);
+  const totalZReportSlots = zReportCount + Z_REPORT_SENTINEL_COUNT;
+  const baseSize = HEADER_SIZE + totalZReportSlots * Z_REPORT_SIZE;
+  const alignedSize = Math.ceil(baseSize / 16) * 16;
+  const buffer = Buffer.alloc(alignedSize, 0xff);
 
   const fmResolver = createDateResolver(
     data?.fmNumbers ?? [],

@@ -77,8 +77,9 @@ const getSums = (item) => {
   const obigD = parseObig(item.match(regexObigD));
   const obigE = parseObig(item.match(regexObigE));
 
-  const regexObigM = /ОБIГ М\/[АБВГД]([*+]|Акциз)\s+([\d,]+)/;
-  const regexObigH = /ОБIГ Н\/[АБВГД]([*+]|Акциз)\s+([\d,]+)/;
+  const obigTag = "(?:([*+]|Акциз)?[АБВГД]|[АБВГД]([*+]|Акциз)?)";
+  const regexObigM = new RegExp(`ОБIГ М\\/${obigTag}\\s+([\\d,]+)`);
+  const regexObigH = new RegExp(`ОБIГ Н\\/${obigTag}\\s+([\\d,]+)`);
 
   const obigM = parseObig(item.match(regexObigM));
   const obigH = parseObig(item.match(regexObigH));
@@ -95,10 +96,12 @@ const getSums = (item) => {
   const vatD = parseObig(item.match(regexVatObigD));
   const vatE = parseObig(item.match(regexVatObigE));
 
-  const regexVatObigM =
-    /М\/[АБВГД]([*+]|Акциз)\s+=\s+\d{1,2},\d{2}%\s+([\d,]+)/;
-  const regexVatObigH =
-    /Н\/[АБВГД]([*+]|Акциз)\s+=\s+\d{1,2},\d{2}%\s+([\d,]+)/;
+  const regexVatObigM = new RegExp(
+    `М\\/${obigTag}\\s+=\\s+\\d{1,2},\\d{2}%\\s+([\\d,]+)`
+  );
+  const regexVatObigH = new RegExp(
+    `Н\\/${obigTag}\\s+=\\s+\\d{1,2},\\d{2}%\\s+([\\d,]+)`
+  );
 
   const vatM = parseObig(item.match(regexVatObigM));
   const vatH = parseObig(item.match(regexVatObigH));
@@ -176,10 +179,10 @@ const toZReport = (report, index) => {
     SumaVatCStorno: toAmount(report.storm.vatC),
     SumaVatDStorno: toAmount(report.storm.vatD),
     SumaVatEStorno: toAmount(report.storm.vatE),
-    ZbirVatM: toAmount(report.obig.vatM),
-    ZbirVatH: toAmount(report.obig.vatH),
-    ZbirVatMStorno: toAmount(report.storm.vatM),
-    ZbirVatHStorno: toAmount(report.storm.vatH),
+    ZbirVatM: toAmount(report.obig.obigM),
+    ZbirVatH: toAmount(report.obig.obigH),
+    ZbirVatMStorno: toAmount(report.storm.obigM),
+    ZbirVatHStorno: toAmount(report.storm.obigH),
     ZbirVatMTax: toAmount(report.obig.vatM),
     ZbirVatHTax: toAmount(report.obig.vatH),
     ZbirVatMTaxStorno: toAmount(report.storm.vatM),

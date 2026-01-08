@@ -16,6 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { ZReport } from "@/lib/fm-types";
+import { zReportFieldLabels } from "@/lib/z-report-labels";
 
 export const ZReportsPage = () => {
   const { data, setZReports } = useFiscalStore();
@@ -184,6 +185,8 @@ export const ZReportsPage = () => {
     }
   }, [filteredReports.length, rowVirtualizer]);
 
+  const fieldLabels = zReportFieldLabels;
+
   const renderField = (label: string, value: string | number | undefined) => (
     <div className="flex items-center justify-between rounded border border-border/40 bg-muted/40 px-2 py-1 text-[11px] leading-tight text-muted-foreground">
       <span className="font-medium text-foreground">{label}</span>
@@ -262,59 +265,65 @@ export const ZReportsPage = () => {
         </div>
 
         <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
-          {renderField("Фіскальний", report.FiscalCount)}
-          {renderField("Повернення", report.StornoCount)}
-          {renderField("Останній документ", report.LastDocument)}
-          {renderField("KSEF", report.KSEFNum)}
-          {renderField("Режим продажу", report.salesMode)}
-          {renderField("Дата", report.DateTime?.iso ?? "—")}
+          {renderField(fieldLabels.FiscalCount, report.FiscalCount)}
+          {renderField(fieldLabels.StornoCount, report.StornoCount)}
+          {renderField(fieldLabels.LastDocument, report.LastDocument)}
+          {renderField(fieldLabels.KSEFNum, report.KSEFNum)}
+          {renderField(fieldLabels.salesMode, report.salesMode)}
+          {renderField(fieldLabels.DateTime, report.DateTime?.iso ?? "—")}
         </div>
 
         <div className="mt-3 space-y-2 text-[12px]">
           <div className="grid grid-cols-5 gap-2">
-            {renderField("Обіг A", report.ObigVatA)}
-            {renderField("Обіг B", report.ObigVatB)}
-            {renderField("Обіг C", report.ObigVatC)}
-            {renderField("Обіг D", report.ObigVatD)}
-            {renderField("Обіг E", report.ObigVatE)}
+            {renderField(fieldLabels.ObigVatA, report.ObigVatA)}
+            {renderField(fieldLabels.ObigVatB, report.ObigVatB)}
+            {renderField(fieldLabels.ObigVatC, report.ObigVatC)}
+            {renderField(fieldLabels.ObigVatD, report.ObigVatD)}
+            {renderField(fieldLabels.ObigVatE, report.ObigVatE)}
           </div>
 
           <div className="grid grid-cols-5 gap-2">
-            {renderField("Обіг A повернення", report.ObigVatAStorno)}
-            {renderField("Обіг B повернення", report.ObigVatBStorno)}
-            {renderField("Обіг C повернення", report.ObigVatCStorno)}
-            {renderField("Обіг D повернення", report.ObigVatDStorno)}
-            {renderField("Обіг E повернення", report.ObigVatEStorno)}
+            {renderField(fieldLabels.ObigVatAStorno, report.ObigVatAStorno)}
+            {renderField(fieldLabels.ObigVatBStorno, report.ObigVatBStorno)}
+            {renderField(fieldLabels.ObigVatCStorno, report.ObigVatCStorno)}
+            {renderField(fieldLabels.ObigVatDStorno, report.ObigVatDStorno)}
+            {renderField(fieldLabels.ObigVatEStorno, report.ObigVatEStorno)}
           </div>
 
           <div className="grid grid-cols-5 gap-2">
-            {renderField("Сума VAT A", report.SumaVatA)}
-            {renderField("Сума VAT B", report.SumaVatB)}
-            {renderField("Сума VAT C", report.SumaVatC)}
-            {renderField("Сума VAT D", report.SumaVatD)}
-            {renderField("Сума VAT E", report.SumaVatE)}
+            {renderField(fieldLabels.SumaVatA, report.SumaVatA)}
+            {renderField(fieldLabels.SumaVatB, report.SumaVatB)}
+            {renderField(fieldLabels.SumaVatC, report.SumaVatC)}
+            {renderField(fieldLabels.SumaVatD, report.SumaVatD)}
+            {renderField(fieldLabels.SumaVatE, report.SumaVatE)}
           </div>
 
           <div className="grid grid-cols-5 gap-2">
-            {renderField("Сума VAT A повернення", report.SumaVatAStorno)}
-            {renderField("Сума VAT B повернення", report.SumaVatBStorno)}
-            {renderField("Сума VAT C повернення", report.SumaVatCStorno)}
-            {renderField("Сума VAT D повернення", report.SumaVatDStorno)}
-            {renderField("Сума VAT E повернення", report.SumaVatEStorno)}
+            {renderField(fieldLabels.SumaVatAStorno, report.SumaVatAStorno)}
+            {renderField(fieldLabels.SumaVatBStorno, report.SumaVatBStorno)}
+            {renderField(fieldLabels.SumaVatCStorno, report.SumaVatCStorno)}
+            {renderField(fieldLabels.SumaVatDStorno, report.SumaVatDStorno)}
+            {renderField(fieldLabels.SumaVatEStorno, report.SumaVatEStorno)}
           </div>
 
           <div className="grid grid-cols-4 gap-2">
-            {renderField("Збір M", report.ZbirVatM)}
-            {renderField("Збір H", report.ZbirVatH)}
-            {renderField("Збір M повернення", report.ZbirVatMStorno)}
-            {renderField("Збір H повернення", report.ZbirVatHStorno)}
+            {renderField(fieldLabels.ZbirVatM, report.ZbirVatM)}
+            {renderField(fieldLabels.ZbirVatH, report.ZbirVatH)}
+            {renderField(fieldLabels.ZbirVatMStorno, report.ZbirVatMStorno)}
+            {renderField(fieldLabels.ZbirVatHStorno, report.ZbirVatHStorno)}
           </div>
 
           <div className="grid grid-cols-4 gap-2">
-            {renderField("Збір M TAX", report.ZbirVatMTax)}
-            {renderField("Збір H TAX", report.ZbirVatHTax)}
-            {renderField("Збір M TAX повернення", report.ZbirVatMTaxStorno)}
-            {renderField("Збір H TAX повернення", report.ZbirVatHTaxStorno)}
+            {renderField(fieldLabels.ZbirVatMTax, report.ZbirVatMTax)}
+            {renderField(fieldLabels.ZbirVatHTax, report.ZbirVatHTax)}
+            {renderField(
+              fieldLabels.ZbirVatMTaxStorno,
+              report.ZbirVatMTaxStorno
+            )}
+            {renderField(
+              fieldLabels.ZbirVatHTaxStorno,
+              report.ZbirVatHTaxStorno
+            )}
           </div>
         </div>
       </div>
@@ -346,7 +355,7 @@ export const ZReportsPage = () => {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Input
               type="number"

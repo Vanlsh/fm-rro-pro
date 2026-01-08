@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { useFiscalStore } from "@/store/fiscal";
 import { toast } from "@/components/ui/sonner";
 import { ArrowDown, ArrowUp } from "lucide-react";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
 
 const taxEntrySchema = z.object({
   iso: z.string().min(1, "Дата не може бути порожньою"),
@@ -51,6 +52,10 @@ export const TaxRecordsPage = () => {
   const { fields, append, remove, move } = useFieldArray({
     control: form.control,
     name: "taxRecords",
+  });
+  const [listRef] = useAutoAnimate<HTMLDivElement>({
+    duration: 250,
+    easing: "ease-in-out",
   });
 
   useEffect(() => {
@@ -111,7 +116,7 @@ export const TaxRecordsPage = () => {
           </Button>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3" ref={listRef}>
           {fields.map((field, index) => (
             <div
               key={field.id}

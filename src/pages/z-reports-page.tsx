@@ -1,32 +1,119 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useFiscalStore } from "@/store/fiscal";
+import { toast } from "@/components/ui/sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { ZReport } from "@/lib/fm-types";
 
 export const ZReportsPage = () => {
   const { data, setZReports } = useFiscalStore();
+  const navigate = useNavigate();
   const listRef = useRef<HTMLDivElement | null>(null);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editDraft, setEditDraft] = useState<Record<string, string>>({});
+  const pendingScrollIndexRef = useRef<number | null>(null);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [zNumberFilter, setZNumberFilter] = useState("");
   const [zRangeStart, setZRangeStart] = useState("");
   const [zRangeEnd, setZRangeEnd] = useState("");
+  const [isImportDialogOpen, setImportDialogOpen] = useState(false);
+  const [ksefInput, setKsefInput] = useState("");
 
   const reports = data?.zReports ?? [];
   const itemEstimate = 260;
   const overscan = 10;
   const itemGap = 12;
+
+  const handleAddReport = () => {
+    if (!data) return;
+    const nextNumber = reports.length + 1;
+    pendingScrollIndexRef.current = reports.length;
+    setZReports((prev) => [
+      ...prev,
+      {
+        ZNumber: nextNumber,
+        DateTime: null,
+        LastDocument: 0,
+        FiscalCount: 0,
+        StornoCount: 0,
+        KSEFNum: 0,
+        ObigVatA: "",
+        ObigVatB: "",
+        ObigVatC: "",
+        ObigVatD: "",
+        ObigVatE: "",
+        ObigVatAStorno: "",
+        ObigVatBStorno: "",
+        ObigVatCStorno: "",
+        ObigVatDStorno: "",
+        ObigVatEStorno: "",
+        SumaVatA: "",
+        SumaVatB: "",
+        SumaVatC: "",
+        SumaVatD: "",
+        SumaVatE: "",
+        SumaVatAStorno: "",
+        SumaVatBStorno: "",
+        SumaVatCStorno: "",
+        SumaVatDStorno: "",
+        SumaVatEStorno: "",
+        ZbirVatM: "",
+        ZbirVatH: "",
+        ZbirVatMStorno: "",
+        ZbirVatHStorno: "",
+        ZbirVatMTax: "",
+        ZbirVatHTax: "",
+        ZbirVatMTaxStorno: "",
+        ZbirVatHTaxStorno: "",
+        salesMode: 0,
+      },
+    ]);
+  };
+
+  const normalizeReports = (items: ZReport[]) =>
+    items.map((item, idx) => ({
+      ...item,
+      ZNumber: idx + 1,
+    }));
+
+  const applyKsefNumber = (items: ZReport[], ksefNumber: number) =>
+    items.map((item) => ({ ...item, KSEFNum: ksefNumber }));
+
+  const handleImportReports = async (mode: "add" | "overwrite") => {
+    if (!data) return;
+    setImportDialogOpen(false);
+    const result = await window.api.importZReports();
+    if (!result) return;
+    const ksefNumber =
+      mode === "overwrite" ? 1 : Number(ksefInput.trim() || NaN);
+    if (mode === "add" && Number.isNaN(ksefNumber)) {
+      toast.error("Вкажіть номер KSEF для додавання.");
+      return;
+    }
+    const nextReports = applyKsefNumber(
+      normalizeReports(result.reports),
+      ksefNumber
+    );
+    if (mode === "overwrite") {
+      setZReports(() => nextReports);
+      toast.success("Z-звіти імпортовано (перезаписано).");
+      return;
+    }
+    const combined = normalizeReports([...reports, ...nextReports]);
+    setZReports(() => combined);
+    toast.success("Z-звіти додано.");
+  };
 
   const filteredReports = useMemo(
     () =>
@@ -88,107 +175,21 @@ export const ZReportsPage = () => {
     measureElement: measureRow,
   });
 
+  useEffect(() => {
+    if (pendingScrollIndexRef.current === null) return;
+    const index = pendingScrollIndexRef.current;
+    pendingScrollIndexRef.current = null;
+    if (index < filteredReports.length) {
+      rowVirtualizer.scrollToIndex(index, { align: "center" });
+    }
+  }, [filteredReports.length, rowVirtualizer]);
+
   const renderField = (label: string, value: string | number | undefined) => (
     <div className="flex items-center justify-between rounded border border-border/40 bg-muted/40 px-2 py-1 text-[11px] leading-tight text-muted-foreground">
       <span className="font-medium text-foreground">{label}</span>
       <span className="ml-2 text-right text-foreground/90">{value ?? "—"}</span>
     </div>
   );
-
-  const editableFields: Array<keyof ZReport> = useMemo(
-    () => [
-      "DateTime",
-      "FiscalCount",
-      "StornoCount",
-      "LastDocument",
-      "KSEFNum",
-      "salesMode",
-      "ObigVatA",
-      "ObigVatB",
-      "ObigVatC",
-      "ObigVatD",
-      "ObigVatE",
-      "ObigVatAStorno",
-      "ObigVatBStorno",
-      "ObigVatCStorno",
-      "ObigVatDStorno",
-      "ObigVatEStorno",
-      "SumaVatA",
-      "SumaVatB",
-      "SumaVatC",
-      "SumaVatD",
-      "SumaVatE",
-      "SumaVatAStorno",
-      "SumaVatBStorno",
-      "SumaVatCStorno",
-      "SumaVatDStorno",
-      "SumaVatEStorno",
-      "ZbirVatM",
-      "ZbirVatH",
-      "ZbirVatMStorno",
-      "ZbirVatHStorno",
-      "ZbirVatMTax",
-      "ZbirVatHTax",
-      "ZbirVatMTaxStorno",
-      "ZbirVatHTaxStorno",
-    ],
-    []
-  );
-
-  const openEdit = (report: ZReport, originalIndex: number) => {
-    setEditingIndex(originalIndex);
-    const draft = editableFields.reduce<Record<string, string>>((acc, key) => {
-      if (key === "DateTime") {
-        acc[key] = report.DateTime?.iso ?? "";
-        return acc;
-      }
-      acc[key] = report[key]?.toString() ?? "";
-      return acc;
-    }, {});
-    setEditDraft(draft);
-  };
-
-  const closeEdit = () => {
-    setEditingIndex(null);
-    setEditDraft({});
-  };
-
-  const handleSave = () => {
-    if (editingIndex === null) return;
-    const current = reports[editingIndex];
-    if (!current) return;
-
-    const updated: ZReport = { ...current };
-    editableFields.forEach((key) => {
-      const rawValue = editDraft[key] ?? "";
-      if (key === "DateTime") {
-        if (!rawValue) {
-          updated.DateTime = null;
-          return;
-        }
-        const existing = current.DateTime;
-        updated.DateTime = existing
-          ? { ...existing, iso: rawValue }
-          : { raw: { time: 0, date: 0 }, iso: rawValue };
-        return;
-      }
-
-      const original = current[key];
-      if (typeof original === "number") {
-        const parsed = rawValue === "" ? 0 : Number(rawValue);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (updated as any)[key] = Number.isNaN(parsed) ? original : parsed;
-      } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (updated as any)[key] = rawValue as any;
-      }
-    });
-
-    setZReports((prev) =>
-      prev.map((item, idx) => (idx === editingIndex ? updated : item))
-    );
-    closeEdit();
-  };
 
   const handleDelete = (originalIndex: number) => {
     setZReports((prev) =>
@@ -200,9 +201,6 @@ export const ZReportsPage = () => {
           FiscalCount: idx + 1,
         }))
     );
-    if (editingIndex === originalIndex) {
-      closeEdit();
-    }
   };
 
   const handleDeleteRange = () => {
@@ -216,10 +214,9 @@ export const ZReportsPage = () => {
         .map((item, idx) => ({
           ...item,
           ZNumber: idx + 1,
-          FiscalCount: idx + 1,
+          // FiscalCount: idx + 1,
         }))
     );
-    closeEdit();
   };
 
   const renderReport = (
@@ -250,7 +247,7 @@ export const ZReportsPage = () => {
         <div className="mt-2 flex items-center gap-2">
           <Button
             variant="outline"
-            onClick={() => openEdit(report, originalIndex)}
+            onClick={() => navigate(`/z-report/${report.ZNumber}/edit`)}
             className="text-[11px]"
           >
             Редагувати
@@ -266,7 +263,7 @@ export const ZReportsPage = () => {
 
         <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
           {renderField("Фіскальний", report.FiscalCount)}
-          {renderField("Сторно", report.StornoCount)}
+          {renderField("Повернення", report.StornoCount)}
           {renderField("Останній документ", report.LastDocument)}
           {renderField("KSEF", report.KSEFNum)}
           {renderField("Режим продажу", report.salesMode)}
@@ -283,11 +280,11 @@ export const ZReportsPage = () => {
           </div>
 
           <div className="grid grid-cols-5 gap-2">
-            {renderField("Обіг A сторно", report.ObigVatAStorno)}
-            {renderField("Обіг B сторно", report.ObigVatBStorno)}
-            {renderField("Обіг C сторно", report.ObigVatCStorno)}
-            {renderField("Обіг D сторно", report.ObigVatDStorno)}
-            {renderField("Обіг E сторно", report.ObigVatEStorno)}
+            {renderField("Обіг A повернення", report.ObigVatAStorno)}
+            {renderField("Обіг B повернення", report.ObigVatBStorno)}
+            {renderField("Обіг C повернення", report.ObigVatCStorno)}
+            {renderField("Обіг D повернення", report.ObigVatDStorno)}
+            {renderField("Обіг E повернення", report.ObigVatEStorno)}
           </div>
 
           <div className="grid grid-cols-5 gap-2">
@@ -299,25 +296,25 @@ export const ZReportsPage = () => {
           </div>
 
           <div className="grid grid-cols-5 gap-2">
-            {renderField("Сума VAT A сторно", report.SumaVatAStorno)}
-            {renderField("Сума VAT B сторно", report.SumaVatBStorno)}
-            {renderField("Сума VAT C сторно", report.SumaVatCStorno)}
-            {renderField("Сума VAT D сторно", report.SumaVatDStorno)}
-            {renderField("Сума VAT E сторно", report.SumaVatEStorno)}
+            {renderField("Сума VAT A повернення", report.SumaVatAStorno)}
+            {renderField("Сума VAT B повернення", report.SumaVatBStorno)}
+            {renderField("Сума VAT C повернення", report.SumaVatCStorno)}
+            {renderField("Сума VAT D повернення", report.SumaVatDStorno)}
+            {renderField("Сума VAT E повернення", report.SumaVatEStorno)}
           </div>
 
           <div className="grid grid-cols-4 gap-2">
             {renderField("Збір M", report.ZbirVatM)}
             {renderField("Збір H", report.ZbirVatH)}
-            {renderField("Збір M сторно", report.ZbirVatMStorno)}
-            {renderField("Збір H сторно", report.ZbirVatHStorno)}
+            {renderField("Збір M повернення", report.ZbirVatMStorno)}
+            {renderField("Збір H повернення", report.ZbirVatHStorno)}
           </div>
 
           <div className="grid grid-cols-4 gap-2">
             {renderField("Збір M TAX", report.ZbirVatMTax)}
             {renderField("Збір H TAX", report.ZbirVatHTax)}
-            {renderField("Збір M TAX сторно", report.ZbirVatMTaxStorno)}
-            {renderField("Збір H TAX сторно", report.ZbirVatHTaxStorno)}
+            {renderField("Збір M TAX повернення", report.ZbirVatMTaxStorno)}
+            {renderField("Збір H TAX повернення", report.ZbirVatHTaxStorno)}
           </div>
         </div>
       </div>
@@ -329,9 +326,24 @@ export const ZReportsPage = () => {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">Z-звіти</h2>
-          <p className="text-xs text-muted-foreground">
-            Всього: {filteredReports.length} / {reports.length}
-          </p>
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-muted-foreground">
+              Всього: {filteredReports.length} / {reports.length}
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setKsefInput("");
+                setImportDialogOpen(true);
+              }}
+            >
+              Імпорт з КСЕФ
+            </Button>
+            <Button size="sm" onClick={handleAddReport}>
+              Додати
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center justify-between">
@@ -389,6 +401,53 @@ export const ZReportsPage = () => {
         </p>
       ) : (
         <>
+          <AlertDialog
+            open={isImportDialogOpen}
+            onOpenChange={setImportDialogOpen}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Імпорт Z-звітів</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Додати імпортовані звіти до поточних чи перезаписати?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="space-y-2">
+                <label className="space-y-1">
+                  <span className="block text-xs font-medium text-muted-foreground">
+                    Номер KSEF для додавання
+                  </span>
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    value={ksefInput}
+                    onChange={(e) => setKsefInput(e.target.value)}
+                    placeholder="Вкажіть номер KSEF"
+                  />
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Для перезапису KSEF автоматично встановлюється на 1.
+                </p>
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Скасувати</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => handleImportReports("add")}
+                  className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                  disabled={Number.isNaN(Number(ksefInput.trim()))}
+                >
+                  Додати
+                </AlertDialogAction>
+                <AlertDialogAction
+                  onClick={() => handleImportReports("overwrite")}
+                  className="bg-destructive text-white hover:bg-destructive/90"
+                >
+                  Перезаписати
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
           <div
             ref={listRef}
             className="relative h-[70vh] overflow-auto rounded-lg bg-muted/30"
@@ -412,51 +471,6 @@ export const ZReportsPage = () => {
               })}
             </div>
           </div>
-
-          <Dialog
-            open={editingIndex !== null}
-            onOpenChange={(open) => {
-              if (!open) closeEdit();
-            }}
-          >
-            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
-              <DialogHeader>
-                <DialogTitle>
-                  Редагування Z-звіту #
-                  {editingIndex !== null
-                    ? (reports[editingIndex]?.ZNumber ?? editingIndex)
-                    : ""}
-                </DialogTitle>
-              </DialogHeader>
-
-              <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
-                {editableFields.map((field) => (
-                  <label key={field} className="space-y-1">
-                    <span className="block text-[11px] font-medium text-muted-foreground">
-                      {field}
-                    </span>
-                    <input
-                      className="w-full rounded border border-border bg-background px-2 py-1 text-sm"
-                      value={editDraft[field] ?? ""}
-                      onChange={(e) =>
-                        setEditDraft((prev) => ({
-                          ...prev,
-                          [field]: e.target.value,
-                        }))
-                      }
-                    />
-                  </label>
-                ))}
-              </div>
-
-              <DialogFooter className="mt-4 gap-2">
-                <Button variant="outline" onClick={closeEdit}>
-                  Скасувати
-                </Button>
-                <Button onClick={handleSave}>Зберегти</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </>
       )}
     </div>

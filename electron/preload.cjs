@@ -14,4 +14,5 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.invoke("fm-save-dialog", data, defaultPath),
   saveFiscalMemoryToPath: (filePath, data) =>
     ipcRenderer.invoke("fm-save-to-path", filePath, data),
+  importZReports: () => ipcRenderer.invoke("zreports-import"),
 });

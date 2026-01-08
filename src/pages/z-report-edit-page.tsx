@@ -42,6 +42,10 @@ const fieldLabels: Record<keyof ZReport, string> = {
   ZbirVatMTaxStorno: "Збір VAT M TAX повернення",
   ZbirVatHTaxStorno: "Збір VAT H TAX повернення",
   ZNumber: "Номер Z-звіту",
+  FMNumChanges: "",
+  LastFiscalizationNum: "",
+  TaxNumChanges: "",
+  RamResetsCount: ""
 };
 
 const baseFields: Array<keyof ZReport> = [

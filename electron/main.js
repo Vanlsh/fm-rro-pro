@@ -3,12 +3,14 @@ import updaterPkg from "electron-updater";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import iconv from "iconv-lite";
 import {
   buildFiscalMemory,
   loadFiscalMemoryFile,
   parseFiscalMemory,
   saveFiscalMemoryFile,
 } from "./lib/fm-parser.js";
+import { parseZReportsFromText } from "./lib/ej-zreport-parser.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const { autoUpdater } = updaterPkg;
@@ -137,6 +139,20 @@ app.whenReady().then(() => {
     await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
     await saveFiscalMemoryFile(filePath, data);
     return { filePath, success: true };
+  });
+
+  ipcMain.handle("zreports-import", async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: "Open Z report text file",
+      properties: ["openFile"],
+      filters: [{ name: "Text", extensions: ["txt", "log"] }],
+    });
+    if (canceled || filePaths.length === 0) return null;
+    const filePath = filePaths[0];
+    const buffer = await fs.promises.readFile(filePath);
+    const content = iconv.decode(buffer, "windows-1251");
+    const reports = parseZReportsFromText(content);
+    return { filePath, reports };
   });
 });
 

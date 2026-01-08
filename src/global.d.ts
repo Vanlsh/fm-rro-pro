@@ -1,5 +1,5 @@
 import type { SuccessResponse, ErrorResponse } from "./lib/types";
-import type { FiscalMemoryDump } from "./lib/fm-types";
+import type { FiscalMemoryDump, ZReport } from "./lib/fm-types";
 
 export {};
 
@@ -25,6 +25,10 @@ declare global {
         filePath: string,
         data: FiscalMemoryDump
       ) => Promise<{ filePath: string; success: true }>;
+      importZReports: () => Promise<
+        | { filePath: string; reports: ZReport[] }
+        | null
+      >;
       checkForUpdates: () => Promise<
         | { status: "up-to-date" }
         | { status: "downloaded"; version: string }

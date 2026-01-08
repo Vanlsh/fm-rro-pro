@@ -4,6 +4,17 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useFiscalStore } from "@/store/fiscal";
+import { toast } from "@/components/ui/sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { ZReport } from "@/lib/fm-types";
 
 export const ZReportsPage = () => {
@@ -16,6 +27,8 @@ export const ZReportsPage = () => {
   const [zNumberFilter, setZNumberFilter] = useState("");
   const [zRangeStart, setZRangeStart] = useState("");
   const [zRangeEnd, setZRangeEnd] = useState("");
+  const [isImportDialogOpen, setImportDialogOpen] = useState(false);
+  const [ksefInput, setKsefInput] = useState("");
 
   const reports = data?.zReports ?? [];
   const itemEstimate = 260;
@@ -32,7 +45,7 @@ export const ZReportsPage = () => {
         ZNumber: nextNumber,
         DateTime: null,
         LastDocument: 0,
-        FiscalCount: nextNumber,
+        FiscalCount: 0,
         StornoCount: 0,
         KSEFNum: 0,
         ObigVatA: "",
@@ -66,6 +79,40 @@ export const ZReportsPage = () => {
         salesMode: 0,
       },
     ]);
+  };
+
+  const normalizeReports = (items: ZReport[]) =>
+    items.map((item, idx) => ({
+      ...item,
+      ZNumber: idx + 1,
+    }));
+
+  const applyKsefNumber = (items: ZReport[], ksefNumber: number) =>
+    items.map((item) => ({ ...item, KSEFNum: ksefNumber }));
+
+  const handleImportReports = async (mode: "add" | "overwrite") => {
+    if (!data) return;
+    setImportDialogOpen(false);
+    const result = await window.api.importZReports();
+    if (!result) return;
+    const ksefNumber =
+      mode === "overwrite" ? 1 : Number(ksefInput.trim() || NaN);
+    if (mode === "add" && Number.isNaN(ksefNumber)) {
+      toast.error("Вкажіть номер KSEF для додавання.");
+      return;
+    }
+    const nextReports = applyKsefNumber(
+      normalizeReports(result.reports),
+      ksefNumber
+    );
+    if (mode === "overwrite") {
+      setZReports(() => nextReports);
+      toast.success("Z-звіти імпортовано (перезаписано).");
+      return;
+    }
+    const combined = normalizeReports([...reports, ...nextReports]);
+    setZReports(() => combined);
+    toast.success("Z-звіти додано.");
   };
 
   const filteredReports = useMemo(
@@ -167,7 +214,7 @@ export const ZReportsPage = () => {
         .map((item, idx) => ({
           ...item,
           ZNumber: idx + 1,
-          FiscalCount: idx + 1,
+          // FiscalCount: idx + 1,
         }))
     );
   };
@@ -283,6 +330,16 @@ export const ZReportsPage = () => {
             <p className="text-xs text-muted-foreground">
               Всього: {filteredReports.length} / {reports.length}
             </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setKsefInput("");
+                setImportDialogOpen(true);
+              }}
+            >
+              Імпорт з КСЕФ
+            </Button>
             <Button size="sm" onClick={handleAddReport}>
               Додати
             </Button>
@@ -344,6 +401,53 @@ export const ZReportsPage = () => {
         </p>
       ) : (
         <>
+          <AlertDialog
+            open={isImportDialogOpen}
+            onOpenChange={setImportDialogOpen}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Імпорт Z-звітів</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Додати імпортовані звіти до поточних чи перезаписати?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="space-y-2">
+                <label className="space-y-1">
+                  <span className="block text-xs font-medium text-muted-foreground">
+                    Номер KSEF для додавання
+                  </span>
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    value={ksefInput}
+                    onChange={(e) => setKsefInput(e.target.value)}
+                    placeholder="Вкажіть номер KSEF"
+                  />
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Для перезапису KSEF автоматично встановлюється на 1.
+                </p>
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Скасувати</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => handleImportReports("add")}
+                  className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                  disabled={Number.isNaN(Number(ksefInput.trim()))}
+                >
+                  Додати
+                </AlertDialogAction>
+                <AlertDialogAction
+                  onClick={() => handleImportReports("overwrite")}
+                  className="bg-destructive text-white hover:bg-destructive/90"
+                >
+                  Перезаписати
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
           <div
             ref={listRef}
             className="relative h-[70vh] overflow-auto rounded-lg bg-muted/30"
@@ -367,7 +471,6 @@ export const ZReportsPage = () => {
               })}
             </div>
           </div>
-
         </>
       )}
     </div>

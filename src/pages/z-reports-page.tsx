@@ -97,6 +97,7 @@ export const ZReportsPage = () => {
 
   const editableFields: Array<keyof ZReport> = useMemo(
     () => [
+      "DateTime",
       "FiscalCount",
       "StornoCount",
       "LastDocument",
@@ -137,6 +138,10 @@ export const ZReportsPage = () => {
   const openEdit = (report: ZReport, originalIndex: number) => {
     setEditingIndex(originalIndex);
     const draft = editableFields.reduce<Record<string, string>>((acc, key) => {
+      if (key === "DateTime") {
+        acc[key] = report.DateTime?.iso ?? "";
+        return acc;
+      }
       acc[key] = report[key]?.toString() ?? "";
       return acc;
     }, {});
@@ -155,8 +160,20 @@ export const ZReportsPage = () => {
 
     const updated: ZReport = { ...current };
     editableFields.forEach((key) => {
-      const original = current[key];
       const rawValue = editDraft[key] ?? "";
+      if (key === "DateTime") {
+        if (!rawValue) {
+          updated.DateTime = null;
+          return;
+        }
+        const existing = current.DateTime;
+        updated.DateTime = existing
+          ? { ...existing, iso: rawValue }
+          : { raw: { time: 0, date: 0 }, iso: rawValue };
+        return;
+      }
+
+      const original = current[key];
       if (typeof original === "number") {
         const parsed = rawValue === "" ? 0 : Number(rawValue);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

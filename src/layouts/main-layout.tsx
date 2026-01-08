@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, NavLink, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,6 +52,17 @@ export function AppSidebar() {
   const { pathname } = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<
+    | "idle"
+    | "checking"
+    | "downloading"
+    | "downloaded"
+    | "up-to-date"
+    | "unavailable"
+    | "error"
+  >("idle");
+  const [updateMessage, setUpdateMessage] = useState<string | null>(null);
+  const [updatePercent, setUpdatePercent] = useState<number | null>(null);
   const { path, data, setData, setPath, setMessage } = useFiscalStore();
 
   const fileName = path ? (path.split(/[/\\]/).pop() ?? path) : null;
@@ -108,6 +119,56 @@ export function AppSidebar() {
       setMessage(`Не вдалося зберегти файл: ${reason}`);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    window.api.onUpdateDownloadProgress((info) => {
+      setUpdateStatus("downloading");
+      setUpdatePercent(Math.round(info.percent));
+    });
+  }, []);
+
+  const handleCheckUpdates = async () => {
+    setUpdateStatus("checking");
+    setUpdateMessage(null);
+    setUpdatePercent(null);
+    try {
+      const result = await window.api.checkForUpdates();
+      if (result.status === "downloaded") {
+        setUpdateStatus("downloaded");
+        setUpdateMessage(`Update ready: v${result.version}`);
+        return;
+      }
+      if (result.status === "up-to-date") {
+        setUpdateStatus("up-to-date");
+        setUpdateMessage("You are on the latest version.");
+        return;
+      }
+      if (result.status === "unavailable") {
+        setUpdateStatus("unavailable");
+        setUpdateMessage(result.message);
+        return;
+      }
+      setUpdateStatus("error");
+      setUpdateMessage(result.message);
+    } catch (error) {
+      const reason =
+        error instanceof Error ? error.message : "Unable to check for updates.";
+      setUpdateStatus("error");
+      setUpdateMessage(reason);
+    }
+  };
+
+  const handleInstallUpdate = async () => {
+    if (!window.confirm("Install update and restart the app now?")) return;
+    try {
+      await window.api.installUpdate();
+    } catch (error) {
+      const reason =
+        error instanceof Error ? error.message : "Failed to install update.";
+      setUpdateStatus("error");
+      setUpdateMessage(reason);
     }
   };
 
@@ -201,13 +262,48 @@ export function AppSidebar() {
         </Collapsible>
       </SidebarContent>
       <SidebarFooter className="px-3 pb-4">
-        <div className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          <p className="font-semibold text-foreground">Підказка</p>
-          <p className="leading-relaxed">
-            Використовуйте{" "}
-            <span className="font-semibold text-foreground">⌘ + B</span> щоб
-            показати чи сховати це меню.
+        <div className="mt-3 rounded-xl border border-border bg-muted/30 px-3 py-3 text-xs text-muted-foreground">
+          <p className="font-semibold text-foreground">Updates</p>
+          <p className="mt-1 leading-relaxed">
+            {updateMessage ?? "Check for app updates and install when ready."}
           </p>
+          {updateStatus === "downloading" && (
+            <div className="mt-2">
+              <div className="h-1.5 w-full rounded-full bg-border">
+                <div
+                  className="h-1.5 rounded-full bg-primary transition-all"
+                  style={{ width: `${updatePercent ?? 0}%` }}
+                />
+              </div>
+              <p className="mt-1 text-[11px]">
+                Downloading... {updatePercent ?? 0}%
+              </p>
+            </div>
+          )}
+          <div className="mt-2 flex flex-col gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleCheckUpdates}
+              disabled={updateStatus === "checking"}
+              className="w-full justify-center"
+            >
+              {updateStatus === "checking"
+                ? "Checking..."
+                : "Check for updates"}
+            </Button>
+            {updateStatus === "downloaded" && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleInstallUpdate}
+                className="w-full justify-center"
+              >
+                Install update
+              </Button>
+            )}
+          </div>
         </div>
       </SidebarFooter>
     </Sidebar>

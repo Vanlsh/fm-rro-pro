@@ -6,6 +6,11 @@ import { Input } from "@/components/ui/input";
 import { useFiscalStore } from "@/store/fiscal";
 import { toast } from "@/components/ui/sonner";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -17,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { ZReport } from "@/lib/fm-types";
 import { zReportFieldLabels } from "@/lib/z-report-labels";
+import { ChevronDown } from "lucide-react";
 
 export const ZReportsPage = () => {
   const { data, setZReports } = useFiscalStore();
@@ -30,6 +36,7 @@ export const ZReportsPage = () => {
   const [zRangeEnd, setZRangeEnd] = useState("");
   const [isImportDialogOpen, setImportDialogOpen] = useState(false);
   const [ksefInput, setKsefInput] = useState("");
+  const [openDetails, setOpenDetails] = useState<Record<number, boolean>>({});
 
   const reports = data?.zReports ?? [];
   const itemEstimate = 260;
@@ -229,6 +236,7 @@ export const ZReportsPage = () => {
     virtualIndex: number,
     originalIndex: number
   ) => {
+    const isOpen = !!openDetails[report.ZNumber];
     return (
       <div
         key={key}
@@ -247,84 +255,108 @@ export const ZReportsPage = () => {
           <span>{report.DateTime?.iso ?? "—"}</span>
         </div>
 
-        <div className="mt-2 flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => navigate(`/z-report/${report.ZNumber}/edit`)}
-            className="text-[11px]"
+        <div className="mt-2 flex items-center gap-2 w-full col">
+          <Collapsible
+            open={isOpen}
+            className="w-full"
+            onOpenChange={(nextOpen) =>
+              setOpenDetails((prev) => ({
+                ...prev,
+                [report.ZNumber]: nextOpen,
+              }))
+            }
           >
-            Редагувати
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => handleDelete(originalIndex)}
-            className="text-[11px]"
-          >
-            Видалити
-          </Button>
-        </div>
+            <div className="flex justify-between gap-2 w-full">
+              <div className="flex gap-2 ">
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(`/z-report/${report.ZNumber}/edit`)}
+                  className="text-[11px]"
+                >
+                  Редагувати
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => handleDelete(originalIndex)}
+                  className="text-[11px]"
+                >
+                  Видалити
+                </Button>
+              </div>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-[11px]">
+                  Деталі
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 transition-transform ${
+                      isOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </Button>
+              </CollapsibleTrigger>
+            </div>
 
-        <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
-          {renderField(fieldLabels.FiscalCount, report.FiscalCount)}
-          {renderField(fieldLabels.StornoCount, report.StornoCount)}
-          {renderField(fieldLabels.LastDocument, report.LastDocument)}
-          {renderField(fieldLabels.KSEFNum, report.KSEFNum)}
-          {renderField(fieldLabels.salesMode, report.salesMode)}
-          {renderField(fieldLabels.DateTime, report.DateTime?.iso ?? "—")}
-        </div>
+            <CollapsibleContent className="mt-3 space-y-2 overflow-hidden text-[12px] transition-[height] duration-200 ease-out data-[state=closed]:h-0 data-[state=open]:h-[var(--radix-collapsible-content-height)]">
+              <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
+                {renderField(fieldLabels.FiscalCount, report.FiscalCount)}
+                {renderField(fieldLabels.StornoCount, report.StornoCount)}
+                {renderField(fieldLabels.LastDocument, report.LastDocument)}
+                {renderField(fieldLabels.KSEFNum, report.KSEFNum)}
+                {renderField(fieldLabels.salesMode, report.salesMode)}
+                {renderField(fieldLabels.DateTime, report.DateTime?.iso ?? "—")}
+              </div>
+              <div className="grid grid-cols-5 gap-2">
+                {renderField(fieldLabels.ObigVatA, report.ObigVatA)}
+                {renderField(fieldLabels.ObigVatB, report.ObigVatB)}
+                {renderField(fieldLabels.ObigVatC, report.ObigVatC)}
+                {renderField(fieldLabels.ObigVatD, report.ObigVatD)}
+                {renderField(fieldLabels.ObigVatE, report.ObigVatE)}
+              </div>
 
-        <div className="mt-3 space-y-2 text-[12px]">
-          <div className="grid grid-cols-5 gap-2">
-            {renderField(fieldLabels.ObigVatA, report.ObigVatA)}
-            {renderField(fieldLabels.ObigVatB, report.ObigVatB)}
-            {renderField(fieldLabels.ObigVatC, report.ObigVatC)}
-            {renderField(fieldLabels.ObigVatD, report.ObigVatD)}
-            {renderField(fieldLabels.ObigVatE, report.ObigVatE)}
-          </div>
+              <div className="grid grid-cols-5 gap-2">
+                {renderField(fieldLabels.ObigVatAStorno, report.ObigVatAStorno)}
+                {renderField(fieldLabels.ObigVatBStorno, report.ObigVatBStorno)}
+                {renderField(fieldLabels.ObigVatCStorno, report.ObigVatCStorno)}
+                {renderField(fieldLabels.ObigVatDStorno, report.ObigVatDStorno)}
+                {renderField(fieldLabels.ObigVatEStorno, report.ObigVatEStorno)}
+              </div>
 
-          <div className="grid grid-cols-5 gap-2">
-            {renderField(fieldLabels.ObigVatAStorno, report.ObigVatAStorno)}
-            {renderField(fieldLabels.ObigVatBStorno, report.ObigVatBStorno)}
-            {renderField(fieldLabels.ObigVatCStorno, report.ObigVatCStorno)}
-            {renderField(fieldLabels.ObigVatDStorno, report.ObigVatDStorno)}
-            {renderField(fieldLabels.ObigVatEStorno, report.ObigVatEStorno)}
-          </div>
+              <div className="grid grid-cols-5 gap-2">
+                {renderField(fieldLabels.SumaVatA, report.SumaVatA)}
+                {renderField(fieldLabels.SumaVatB, report.SumaVatB)}
+                {renderField(fieldLabels.SumaVatC, report.SumaVatC)}
+                {renderField(fieldLabels.SumaVatD, report.SumaVatD)}
+                {renderField(fieldLabels.SumaVatE, report.SumaVatE)}
+              </div>
 
-          <div className="grid grid-cols-5 gap-2">
-            {renderField(fieldLabels.SumaVatA, report.SumaVatA)}
-            {renderField(fieldLabels.SumaVatB, report.SumaVatB)}
-            {renderField(fieldLabels.SumaVatC, report.SumaVatC)}
-            {renderField(fieldLabels.SumaVatD, report.SumaVatD)}
-            {renderField(fieldLabels.SumaVatE, report.SumaVatE)}
-          </div>
+              <div className="grid grid-cols-5 gap-2">
+                {renderField(fieldLabels.SumaVatAStorno, report.SumaVatAStorno)}
+                {renderField(fieldLabels.SumaVatBStorno, report.SumaVatBStorno)}
+                {renderField(fieldLabels.SumaVatCStorno, report.SumaVatCStorno)}
+                {renderField(fieldLabels.SumaVatDStorno, report.SumaVatDStorno)}
+                {renderField(fieldLabels.SumaVatEStorno, report.SumaVatEStorno)}
+              </div>
 
-          <div className="grid grid-cols-5 gap-2">
-            {renderField(fieldLabels.SumaVatAStorno, report.SumaVatAStorno)}
-            {renderField(fieldLabels.SumaVatBStorno, report.SumaVatBStorno)}
-            {renderField(fieldLabels.SumaVatCStorno, report.SumaVatCStorno)}
-            {renderField(fieldLabels.SumaVatDStorno, report.SumaVatDStorno)}
-            {renderField(fieldLabels.SumaVatEStorno, report.SumaVatEStorno)}
-          </div>
+              <div className="grid grid-cols-4 gap-2">
+                {renderField(fieldLabels.ZbirVatM, report.ZbirVatM)}
+                {renderField(fieldLabels.ZbirVatH, report.ZbirVatH)}
+                {renderField(fieldLabels.ZbirVatMStorno, report.ZbirVatMStorno)}
+                {renderField(fieldLabels.ZbirVatHStorno, report.ZbirVatHStorno)}
+              </div>
 
-          <div className="grid grid-cols-4 gap-2">
-            {renderField(fieldLabels.ZbirVatM, report.ZbirVatM)}
-            {renderField(fieldLabels.ZbirVatH, report.ZbirVatH)}
-            {renderField(fieldLabels.ZbirVatMStorno, report.ZbirVatMStorno)}
-            {renderField(fieldLabels.ZbirVatHStorno, report.ZbirVatHStorno)}
-          </div>
-
-          <div className="grid grid-cols-4 gap-2">
-            {renderField(fieldLabels.ZbirVatMTax, report.ZbirVatMTax)}
-            {renderField(fieldLabels.ZbirVatHTax, report.ZbirVatHTax)}
-            {renderField(
-              fieldLabels.ZbirVatMTaxStorno,
-              report.ZbirVatMTaxStorno
-            )}
-            {renderField(
-              fieldLabels.ZbirVatHTaxStorno,
-              report.ZbirVatHTaxStorno
-            )}
-          </div>
+              <div className="grid grid-cols-4 gap-2">
+                {renderField(fieldLabels.ZbirVatMTax, report.ZbirVatMTax)}
+                {renderField(fieldLabels.ZbirVatHTax, report.ZbirVatHTax)}
+                {renderField(
+                  fieldLabels.ZbirVatMTaxStorno,
+                  report.ZbirVatMTaxStorno
+                )}
+                {renderField(
+                  fieldLabels.ZbirVatHTaxStorno,
+                  report.ZbirVatHTaxStorno
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       </div>
     );

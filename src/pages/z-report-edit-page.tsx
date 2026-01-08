@@ -5,48 +5,9 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/sonner";
 import { useFiscalStore } from "@/store/fiscal";
 import type { ZReport } from "@/lib/fm-types";
+import { zReportFieldLabels } from "@/lib/z-report-labels";
 
-const fieldLabels: Record<keyof ZReport, string> = {
-  DateTime: "Дата/час",
-  FiscalCount: "Фіскальний лічильник",
-  StornoCount: "Лічильник повернень",
-  LastDocument: "Останній документ",
-  KSEFNum: "Номер KSEF",
-  salesMode: "Режим продажу",
-  ObigVatA: "Обіг VAT A",
-  ObigVatB: "Обіг VAT B",
-  ObigVatC: "Обіг VAT C",
-  ObigVatD: "Обіг VAT D",
-  ObigVatE: "Обіг VAT E",
-  ObigVatAStorno: "Обіг VAT A повернення",
-  ObigVatBStorno: "Обіг VAT B повернення",
-  ObigVatCStorno: "Обіг VAT C повернення",
-  ObigVatDStorno: "Обіг VAT D повернення",
-  ObigVatEStorno: "Обіг VAT E повернення",
-  SumaVatA: "Сума VAT A",
-  SumaVatB: "Сума VAT B",
-  SumaVatC: "Сума VAT C",
-  SumaVatD: "Сума VAT D",
-  SumaVatE: "Сума VAT E",
-  SumaVatAStorno: "Сума VAT A повернення",
-  SumaVatBStorno: "Сума VAT B повернення",
-  SumaVatCStorno: "Сума VAT C повернення",
-  SumaVatDStorno: "Сума VAT D повернення",
-  SumaVatEStorno: "Сума VAT E повернення",
-  ZbirVatM: "Збір VAT M",
-  ZbirVatH: "Збір VAT H",
-  ZbirVatMStorno: "Збір VAT M повернення",
-  ZbirVatHStorno: "Збір VAT H повернення",
-  ZbirVatMTax: "Збір VAT M TAX",
-  ZbirVatHTax: "Збір VAT H TAX",
-  ZbirVatMTaxStorno: "Збір VAT M TAX повернення",
-  ZbirVatHTaxStorno: "Збір VAT H TAX повернення",
-  ZNumber: "Номер Z-звіту",
-  FMNumChanges: "",
-  LastFiscalizationNum: "",
-  TaxNumChanges: "",
-  RamResetsCount: ""
-};
+const fieldLabels = zReportFieldLabels;
 
 const baseFields: Array<keyof ZReport> = [
   "DateTime",
@@ -63,13 +24,13 @@ const salesFields: Array<keyof ZReport> = [
   "ObigVatC",
   "ObigVatD",
   "ObigVatE",
+  "ZbirVatM",
+  "ZbirVatH",
   "SumaVatA",
   "SumaVatB",
   "SumaVatC",
   "SumaVatD",
   "SumaVatE",
-  "ZbirVatM",
-  "ZbirVatH",
   "ZbirVatMTax",
   "ZbirVatHTax",
 ];
@@ -109,6 +70,7 @@ export const ZReportEditPage = () => {
     return data.zReports.findIndex((item) => item.ZNumber === zNumber);
   }, [data?.zReports, zNumber]);
   const report = reportIndex >= 0 ? data?.zReports[reportIndex] : undefined;
+  console.log("🚀 ~ ZReportEditPage ~ report:", report);
 
   useEffect(() => {
     if (!report) return;
@@ -173,9 +135,7 @@ export const ZReportEditPage = () => {
   if (Number.isNaN(zNumber) || !report) {
     return (
       <div className="space-y-3">
-        <p className="text-sm text-muted-foreground">
-          Z-звіт не знайдено.
-        </p>
+        <p className="text-sm text-muted-foreground">Z-звіт не знайдено.</p>
         <Button variant="outline" onClick={handleCancel}>
           Назад до списку
         </Button>
